@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PA Class A Wild Trout Streams – Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0f1117;
+    color: #e2e8f0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    background: #1a1f2e;
+    border-bottom: 1px solid #2d3748;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-shrink: 0;
+  }
+  header h1 { font-size: 1.1rem; font-weight: 700; color: #63b3ed; white-space: nowrap; }
+  header .subtitle { font-size: 0.78rem; color: #718096; }
+  .result-count { margin-left: auto; font-size: 0.82rem; color: #a0aec0; white-space: nowrap; }
+
+  .nav-link, .view-btn {
+    background: #2d3748;
+    border: 1px solid #4a5568;
+    color: #a0aec0;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .nav-link:hover, .view-btn:hover { background: #4a5568; color: #e2e8f0; }
+
+  .view-toggle {
+    display: flex;
+    border: 1px solid #4a5568;
+    border-radius: 6px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .view-toggle button {
+    background: #2d3748;
+    border: none;
+    color: #a0aec0;
+    padding: 6px 13px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    border-right: 1px solid #4a5568;
+  }
+  .view-toggle button:last-child { border-right: none; }
+  .view-toggle button.active { background: #3a4a6e; color: #63b3ed; font-weight: 600; }
+  .view-toggle button:hover:not(.active) { background: #4a5568; color: #e2e8f0; }
+
+  .controls {
+    background: #1a1f2e;
+    border-bottom: 1px solid #2d3748;
+    padding: 10px 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .controls select,
+  .controls input[type="text"] {
+    background: #2d3748;
+    border: 1px solid #4a5568;
+    color: #e2e8f0;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 0.82rem;
+    outline: none;
+  }
+  .controls input[type="text"] { width: 180px; }
+  .controls select:focus,
+  .controls input[type="text"]:focus { border-color: #63b3ed; }
+
+  .range-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.78rem;
+    color: #a0aec0;
+  }
+  .range-group input[type="number"] {
+    background: #2d3748;
+    border: 1px solid #4a5568;
+    color: #e2e8f0;
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 0.82rem;
+    width: 70px;
+    outline: none;
+  }
+  .range-group input[type="number"]:focus { border-color: #63b3ed; }
+
+  .btn-clear {
+    background: #2d3748;
+    border: 1px solid #4a5568;
+    color: #a0aec0;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-clear:hover { background: #4a5568; color: #e2e8f0; }
+
+  .streams-notice {
+    background: #2d3748;
+    border: 1px solid #4a5568;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    color: #718096;
+  }
+  .streams-notice a { color: #63b3ed; }
+
+  #map { flex: 1; min-height: 0; }
+
+  /* Legend */
+  .legend {
+    background: #1a1f2e;
+    border: 1px solid #2d3748;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.75rem;
+    color: #a0aec0;
+    line-height: 1.9;
+    min-width: 145px;
+  }
+  .legend-title { font-weight: 600; color: #e2e8f0; margin-bottom: 4px; font-size: 0.78rem; }
+  .legend-item { display: flex; align-items: center; gap: 8px; }
+  .legend-dot {
+    width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0;
+    border: 1px solid rgba(255,255,255,0.15);
+  }
+  .legend-line {
+    width: 22px; height: 4px; border-radius: 2px; flex-shrink: 0;
+  }
+
+  /* Leaflet popup */
+  .leaflet-popup-content-wrapper {
+    background: #1a1f2e; color: #e2e8f0;
+    border: 1px solid #2d3748; border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  }
+  .leaflet-popup-tip { background: #1a1f2e; }
+  .leaflet-popup-content { margin: 12px 16px; font-size: 0.82rem; min-width: 210px; }
+  .popup-stream { font-weight: 700; font-size: 0.95rem; color: #63b3ed; margin-bottom: 4px; }
+  .popup-county { color: #a0aec0; font-size: 0.74rem; margin-bottom: 8px; }
+  .popup-row { display: flex; justify-content: space-between; gap: 18px; padding: 2px 0; }
+  .popup-label { color: #718096; }
+  .popup-val { color: #e2e8f0; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .popup-val.hi { color: #68d391; }
+  .popup-divider { border: none; border-top: 1px solid #2d3748; margin: 6px 0; }
+  .species-badge {
+    display: inline-block; padding: 1px 7px; border-radius: 10px;
+    font-size: 0.72rem; font-weight: 600;
+  }
+  .sp-brook   { background: #1a4a2e; color: #68d391; }
+  .sp-brown   { background: #3d2e0a; color: #f6ad55; }
+  .sp-rainbow { background: #1a2e4a; color: #76e4f7; }
+  .sp-mixed   { background: #2d1b4e; color: #b794f4; }
+  .sp-unknown { background: #2d3748; color: #718096; }
+
+  /* Leaflet tooltip */
+  .leaflet-tooltip {
+    background: rgba(15,17,23,0.93);
+    border: 1px solid #2d3748; border-radius: 5px;
+    color: #e2e8f0; font-size: 0.75rem; padding: 4px 8px; white-space: nowrap;
+  }
+  .leaflet-tooltip::before { display: none; }
+  .tt-name { font-weight: 600; }
+  .tt-val  { color: #68d391; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🎣 PA Class A Wild Trout Streams</h1>
+    <div class="subtitle">Proposed additions · Pennsylvania Fish &amp; Boat Commission bulletins 2010–2025</div>
+  </div>
+  <div class="result-count" id="resultCount"></div>
+  <div class="view-toggle">
+    <button id="btnPoints" class="active" onclick="setViewMode('points')">⬤ Points</button>
+    <button id="btnStreams" onclick="setViewMode('streams')">〰 Streams</button>
+  </div>
+  <select id="basemapSelect" onchange="setBasemap(this.value)" style="background:#2d3748;border:1px solid #4a5568;color:#e2e8f0;border-radius:6px;padding:6px 10px;font-size:0.8rem;outline:none;cursor:pointer">
+    <option value="dark"        selected>🌑 Dark</option>
+    <option value="light"              >🌕 Light</option>
+    <option value="voyager"            >🗺 Voyager</option>
+    <option value="osm"                >🗺 Street (OSM)</option>
+    <option value="otm"                >🥾 Topo + Trails</option>
+    <option value="esritopo"           >🗻 Topo (ESRI)</option>
+    <option value="topo"               >📐 Topo (USGS)</option>
+    <option value="satellite"          >🛰 Satellite</option>
+    <option value="satellitetopo"      >🛰+📐 Satellite+Topo</option>
+  </select>
+  <a class="nav-link" href="index.html">📋 Table view</a>
+</header>
+
+<div class="controls">
+  <input type="text" id="search" placeholder="Search stream or county…" oninput="applyFilters()">
+
+  <select id="filterCounty" onchange="applyFilters()">
+    <option value="">All counties</option>
+  </select>
+
+  <select id="filterSpecies" onchange="applyFilters()">
+    <option value="">All species</option>
+    <option value="Brook">Brook trout</option>
+    <option value="Brown">Brown trout</option>
+    <option value="Rainbow">Rainbow trout</option>
+    <option value="Mixed">Mixed</option>
+  </select>
+
+  <div class="range-group">
+    Brook ≥
+    <input type="number" id="minBrook" placeholder="0" min="0" oninput="applyFilters()">
+    kg/ha
+  </div>
+
+  <div class="range-group">
+    Color by
+    <select id="colorBy" onchange="applyFilters()">
+      <option value="brook">Brook trout</option>
+      <option value="brown">Brown trout</option>
+      <option value="total" selected>Total biomass</option>
+      <option value="species">Species</option>
+    </select>
+  </div>
+
+  <button class="btn-clear" onclick="clearFilters()">Clear filters</button>
+
+  <span class="streams-notice" id="streamsNotice" style="display:none;color:#a0aec0"></span>
+</div>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ─── State ───────────────────────────────────────────────────────────────────
+let allData = [];
+let lineIndex = null;   // Map: key → GeoJSON feature (loaded once)
+let viewMode = 'points';
+
+// ─── Map ─────────────────────────────────────────────────────────────────────
+const map = L.map('map', { center: [41.2, -77.5], zoom: 8 });
+
+const BASEMAPS = {
+  dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+    subdomains: 'abcd', maxZoom: 19,
+  }),
+  light: L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+    subdomains: 'abcd', maxZoom: 19,
+  }),
+  voyager: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+    subdomains: 'abcd', maxZoom: 19,
+  }),
+  osm: L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19,
+  }),
+  // Best for fishing: shows contours, streams as blue lines, hiking trails
+  otm: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+    attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, SRTM | Style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a>',
+    subdomains: 'abc', maxZoom: 17,
+  }),
+  esritopo: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+    attribution: '&copy; <a href="https://www.esri.com/">Esri</a>, HERE, DeLorme, USGS',
+    maxZoom: 19,
+  }),
+  topo: L.tileLayer('https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}', {
+    attribution: '&copy; <a href="https://www.usgs.gov/">USGS</a> National Map',
+    maxZoom: 16,
+  }),
+  satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: '&copy; <a href="https://www.esri.com/">Esri</a>, USGS, NOAA',
+    maxZoom: 19,
+  }),
+  satellitetopo: L.layerGroup([
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: '&copy; <a href="https://www.esri.com/">Esri</a> &copy; <a href="https://www.usgs.gov/">USGS</a>',
+      maxZoom: 19,
+    }),
+    L.tileLayer('https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}', {
+      opacity: 0.6, maxZoom: 16,
+    }),
+  ]),
+};
+
+let currentBasemap = BASEMAPS.dark;
+currentBasemap.addTo(map);
+
+// ── Galeton, PA marker ───────────────────────────────────────────────────────
+L.marker([41.7324, -77.6442], {
+  icon: L.divIcon({
+    html: '<span style="font-size:18px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.8))">⭐</span>',
+    className: '',
+    iconSize: [22, 22],
+    iconAnchor: [11, 11],
+  }),
+  zIndexOffset: 1000,
+}).addTo(map).bindTooltip('Galeton, PA', {
+  permanent: false,
+  direction: 'top',
+  offset: [0, -12],
+});
+
+function setBasemap(key) {
+  map.removeLayer(currentBasemap);
+  currentBasemap = BASEMAPS[key];
+  currentBasemap.addTo(map);
+  // Keep data layer on top
+  dataLayer.bringToFront();
+}
+
+const dataLayer = L.layerGroup().addTo(map);
+
+// ─── Legend ──────────────────────────────────────────────────────────────────
+const legendControl = L.control({ position: 'bottomright' });
+legendControl.onAdd = () => {
+  const div = L.DomUtil.create('div', 'legend');
+  div.id = 'legend';
+  return div;
+};
+legendControl.addTo(map);
+
+function buildLegend(colorBy, mode) {
+  const div = document.getElementById('legend');
+  if (!div) return;
+  const swatchTag = mode === 'streams' ? 'legend-line' : 'legend-dot';
+  const swatch = (color) =>
+    mode === 'streams'
+      ? `<span class="legend-line" style="background:${color}"></span>`
+      : `<span class="legend-dot" style="background:${color}"></span>`;
+
+  if (colorBy === 'species') {
+    div.innerHTML = `
+      <div class="legend-title">Species</div>
+      <div class="legend-item">${swatch('#68d391')} Brook</div>
+      <div class="legend-item">${swatch('#f6ad55')} Brown</div>
+      <div class="legend-item">${swatch('#76e4f7')} Rainbow</div>
+      <div class="legend-item">${swatch('#b794f4')} Mixed</div>`;
+  } else {
+    const label = colorBy === 'brook' ? 'Brook trout (kg/ha)'
+                : colorBy === 'brown' ? 'Brown trout (kg/ha)'
+                : 'Total biomass (kg/ha)';
+    // Build a continuous gradient bar + labeled ticks
+    const gradStops = BIOMASS_STOPS.map(([v, rgb]) => `${toHex(rgb)} ${Math.round(v/220*100)}%`).join(', ');
+    div.innerHTML = `
+      <div class="legend-title">${label}</div>
+      <div style="width:100%;height:12px;border-radius:4px;margin:4px 0 2px;
+                  background:linear-gradient(to right,${gradStops})"></div>
+      <div style="display:flex;justify-content:space-between;font-size:0.68rem;color:#718096">
+        <span>0</span><span>30</span><span>75</span><span>130</span><span>220+</span>
+      </div>
+      <div style="margin-top:6px;font-size:0.7rem;color:#718096">
+        <div class="legend-item"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#637ac8;margin-right:6px"></span>Class A threshold (30)</div>
+      </div>`;
+  }
+}
+
+// ─── Color scale (continuous gradient) ───────────────────────────────────────
+// Stops: [value_kg_ha, [r, g, b]]
+const BIOMASS_STOPS = [
+  [  0, [ 74,  85, 104]],  // #4a5568  gray       — below Class A
+  [ 30, [ 99, 122, 200]],  // #637ac8  slate-blue — just qualifying
+  [ 50, [ 56, 178, 172]],  // #38b2ac  teal
+  [ 75, [104, 211, 145]],  // #68d391  green
+  [100, [ 72, 187, 120]],  // #48bb78  mid-green
+  [130, [246, 224,  94]],  // #f6e05e  yellow
+  [170, [237, 137,  54]],  // #ed8936  orange
+  [220, [252,  96,  96]],  // #fc6060  red
+];
+
+function lerpRGB(a, b, t) {
+  return [
+    Math.round(a[0] + (b[0] - a[0]) * t),
+    Math.round(a[1] + (b[1] - a[1]) * t),
+    Math.round(a[2] + (b[2] - a[2]) * t),
+  ];
+}
+
+function toHex([r, g, b]) {
+  return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+}
+
+function biomassColor(v) {
+  if (v == null || v <= 0) return toHex(BIOMASS_STOPS[0][1]);
+  const stops = BIOMASS_STOPS;
+  if (v >= stops[stops.length - 1][0]) return toHex(stops[stops.length - 1][1]);
+  for (let i = 1; i < stops.length; i++) {
+    if (v <= stops[i][0]) {
+      const t = (v - stops[i-1][0]) / (stops[i][0] - stops[i-1][0]);
+      return toHex(lerpRGB(stops[i-1][1], stops[i][1], t));
+    }
+  }
+}
+
+// ─── Color / size helpers ─────────────────────────────────────────────────────
+function colorFor(v, colorBy, d) {
+  if (colorBy === 'species') {
+    const s = d.dominant_species || '';
+    if (s.startsWith('Brook') && !s.includes('+')) return '#68d391';
+    if (s.startsWith('Brown') && !s.includes('+')) return '#f6ad55';
+    if (s.startsWith('Rainbow') && !s.includes('+')) return '#76e4f7';
+    return '#b794f4';
+  }
+  return biomassColor(v);
+}
+
+function radiusFor(v) {
+  return Math.min(16, Math.max(5, Math.sqrt(v || 0) * 1.1));
+}
+
+function weightFor(v) {
+  // Thicker lines for higher biomass
+  if (v == null) return 2;
+  if (v > 100) return 5;
+  if (v >  50) return 4;
+  if (v >  30) return 3;
+  return 2;
+}
+
+// ─── Popup / tooltip ──────────────────────────────────────────────────────────
+function fmt(v, dec = 2) {
+  return (v == null) ? '—' : (+v).toFixed(dec);
+}
+
+function speciesBadge(d) {
+  const s = d.dominant_species || '';
+  let cls = 'sp-unknown';
+  if (s.startsWith('Brook') && !s.includes('+')) cls = 'sp-brook';
+  else if (s.startsWith('Brown') && !s.includes('+')) cls = 'sp-brown';
+  else if (s.startsWith('Rainbow') && !s.includes('+')) cls = 'sp-rainbow';
+  else if (s.includes('+') || s.startsWith('Mixed')) cls = 'sp-mixed';
+  return `<span class="species-badge ${cls}">${s.replace('Mixed (','').replace(')','') || 'Unknown'}</span>`;
+}
+
+function buildPopup(d) {
+  const limits = [d.section ? `Sec ${d.section}` : '', d.limits].filter(Boolean).join(' · ');
+  return `
+    <div class="popup-stream">${d.stream || 'Unknown'}</div>
+    <div class="popup-county">${d.county || ''}${limits ? ' &nbsp;·&nbsp; ' + limits : ''}</div>
+    <div class="popup-row"><span class="popup-label">Species</span><span>${speciesBadge(d)}</span></div>
+    <hr class="popup-divider">
+    <div class="popup-row"><span class="popup-label">Brook trout</span><span class="popup-val hi">${fmt(d.brook_trout_kg_ha)} kg/ha</span></div>
+    <div class="popup-row"><span class="popup-label">Brown trout</span><span class="popup-val">${fmt(d.brown_trout_kg_ha)} kg/ha</span></div>
+    <div class="popup-row"><span class="popup-label">Rainbow trout</span><span class="popup-val">${fmt(d.rainbow_trout_kg_ha)} kg/ha</span></div>
+    <div class="popup-row"><span class="popup-label">Total biomass</span><span class="popup-val">${fmt(d.total_biomass_kg_ha)} kg/ha</span></div>
+    <hr class="popup-divider">
+    <div class="popup-row"><span class="popup-label">Length</span><span class="popup-val">${fmt(d.length_miles, 2)} mi</span></div>
+    <div class="popup-row"><span class="popup-label">Survey year</span><span class="popup-val">${d.survey_year || '—'}</span></div>
+    <div class="popup-row"><span class="popup-label">Bulletin</span><span class="popup-val">${d.bulletin_year || '—'}</span></div>`;
+}
+
+function buildTooltip(d, colorBy) {
+  const val = colorBy === 'brook' ? d.brook_trout_kg_ha
+            : colorBy === 'brown' ? d.brown_trout_kg_ha
+            : d.total_biomass_kg_ha;
+  const label = colorBy === 'brook' ? 'Brook' : colorBy === 'brown' ? 'Brown' : 'Total';
+  return `<span class="tt-name">${d.stream}</span><br><span class="tt-val">${label}: ${fmt(val)} kg/ha</span>`;
+}
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+function streamKey(d) {
+  return [d.county, d.stream, d.section || '', d.bulletin_doc || ''].join('|');
+}
+
+function renderPoints(data) {
+  const colorBy = document.getElementById('colorBy').value;
+  buildLegend(colorBy, 'points');
+
+  data.forEach(d => {
+    if (!d.latitude || !d.longitude) return;
+    const val = colorBy === 'brook' ? d.brook_trout_kg_ha
+              : colorBy === 'brown' ? d.brown_trout_kg_ha
+              : d.total_biomass_kg_ha;
+    const color = colorFor(val, colorBy, d);
+    const sizeVal = colorBy === 'species' ? d.total_biomass_kg_ha : val;
+
+    const lightBase = ['light', 'osm'].includes(document.getElementById('basemapSelect').value);
+    const m = L.circleMarker([d.latitude, d.longitude], {
+      radius: radiusFor(sizeVal),
+      fillColor: color,
+      color: lightBase ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.2)',
+      weight: lightBase ? 1.5 : 1,
+      fillOpacity: 0.88,
+    });
+    m.bindTooltip(buildTooltip(d, colorBy), { permanent: false, direction: 'top',
+      offset: [0, -radiusFor(sizeVal)] });
+    m.bindPopup(buildPopup(d), { maxWidth: 280 });
+    dataLayer.addLayer(m);
+  });
+}
+
+function renderStreams(data) {
+  const colorBy = document.getElementById('colorBy').value;
+  buildLegend(colorBy, 'streams');
+  let streamsMapped = 0;
+
+  data.forEach(d => {
+    const key = streamKey(d);
+    const feat = lineIndex && lineIndex.get(key);
+
+    if (feat) {
+      const val = colorBy === 'brook' ? d.brook_trout_kg_ha
+                : colorBy === 'brown' ? d.brown_trout_kg_ha
+                : d.total_biomass_kg_ha;
+      const color = colorFor(val, colorBy, d);
+      const weight = weightFor(d.total_biomass_kg_ha);
+
+      const line = L.geoJSON(feat, {
+        style: { color, weight, opacity: 0.85, lineCap: 'round', lineJoin: 'round' },
+      });
+      line.bindTooltip(buildTooltip(d, colorBy), { sticky: true });
+      line.bindPopup(buildPopup(d), { maxWidth: 280 });
+      dataLayer.addLayer(line);
+      streamsMapped++;
+    } else if (d.latitude && d.longitude) {
+      // Fall back to a smaller point for streams without geometry
+      const m = L.circleMarker([d.latitude, d.longitude], {
+        radius: 4, fillColor: '#4a5568', color: 'rgba(0,0,0,0.3)',
+        weight: 1, fillOpacity: 0.6,
+      });
+      m.bindTooltip(buildTooltip(d, colorBy) + '<br><span style="color:#718096;font-size:0.7rem">No line geometry</span>',
+        { permanent: false, direction: 'top' });
+      m.bindPopup(buildPopup(d), { maxWidth: 280 });
+      dataLayer.addLayer(m);
+    }
+  });
+
+  return streamsMapped;
+}
+
+function render(data) {
+  dataLayer.clearLayers();
+  const colorBy = document.getElementById('colorBy').value;
+
+  let mapped = 0, total = data.length, streamsDrawn = 0;
+
+  if (viewMode === 'points') {
+    renderPoints(data);
+    mapped = data.filter(d => d.latitude && d.longitude).length;
+    document.getElementById('resultCount').textContent =
+      `${mapped.toLocaleString()} mapped · ${total.toLocaleString()} total`;
+  } else {
+    streamsDrawn = renderStreams(data);
+    mapped = data.filter(d => d.latitude && d.longitude).length;
+    document.getElementById('resultCount').textContent =
+      `${streamsDrawn.toLocaleString()} stream lines · ${mapped.toLocaleString()} with coords · ${total.toLocaleString()} total`;
+  }
+}
+
+// ─── Overpass / OSM stream geometry ──────────────────────────────────────────
+// Strategy (borrowed from Smokies app): fetch ALL named waterways per tile,
+// no name filtering in the query. Match client-side with normalized names.
+// PA is divided into a 3×3 grid (~9 queries) instead of ~35 name-regex batches.
+
+const OVERPASS_ENDPOINTS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+];
+
+// PA 3×3 tile grid  [s, w, n, e]
+const PA_TILES = [
+  [39.70, -80.52, 40.70, -78.50],  // SW
+  [39.70, -78.50, 40.70, -76.70],  // SC
+  [39.70, -76.70, 40.70, -74.69],  // SE
+  [40.70, -80.52, 41.50, -78.50],  // MW
+  [40.70, -78.50, 41.50, -76.70],  // MC
+  [40.70, -76.70, 41.50, -74.69],  // ME
+  [41.50, -80.52, 42.27, -78.50],  // NW
+  [41.50, -78.50, 42.27, -76.70],  // NC
+  [41.50, -76.70, 42.27, -74.69],  // NE
+];
+
+function isUNT(name) {
+  return /^(unt\b|unnamed)/i.test(name || '');
+}
+
+// Normalize stream names for fuzzy matching (from Smokies app)
+function normalizeName(name = '') {
+  return name
+    .toLowerCase()
+    .replace(/\b(the|of)\b/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+async function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+let _epIdx = 0;
+async function overpassPost(query) {
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const url = OVERPASS_ENDPOINTS[_epIdx % OVERPASS_ENDPOINTS.length];
+    try {
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+        body: `data=${encodeURIComponent(query)}`,
+      });
+      if (resp.status === 429) {
+        _epIdx++;
+        const wait = Math.min(15000 * (attempt + 1), 60000);
+        console.warn(`429 from ${url}, switching endpoint, waiting ${wait/1000}s`);
+        await sleep(wait);
+        continue;
+      }
+      if (!resp.ok) throw new Error(`Overpass HTTP ${resp.status}`);
+      const data = await resp.json();
+      if (Array.isArray(data.elements)) return data;
+      throw new Error('No elements in response');
+    } catch (e) {
+      if (attempt < 5) await sleep(4000 * (attempt + 1));
+      else throw e;
+    }
+  }
+}
+
+async function fetchTile([s, w, n, e]) {
+  const query = `[out:json][timeout:90];\n(way["waterway"]["name"](${s},${w},${n},${e}););\nout geom;`;
+  return overpassPost(query);
+}
+
+function wayMid(way) {
+  const g = way.geometry;
+  if (!g || !g.length) return null;
+  const m = g[Math.floor(g.length / 2)];
+  return [m.lat, m.lon];
+}
+
+function approxDistDeg(lat1, lon1, lat2, lon2) {
+  return Math.sqrt((lat1 - lat2) ** 2 + (lon1 - lon2) ** 2);
+}
+
+function buildFeature(ways, key, stream) {
+  return {
+    type: 'Feature',
+    geometry: {
+      type: 'MultiLineString',
+      coordinates: ways.map(w => w.geometry.map(pt => [pt.lon, pt.lat])),
+    },
+    properties: { key, stream },
+  };
+}
+
+function matchTileWays(elements, streams) {
+  // Index OSM ways by normalized name
+  const byNorm = {};
+  for (const w of elements) {
+    const name = w.tags && w.tags.name;
+    if (!name || !w.geometry) continue;
+    const norm = normalizeName(name);
+    (byNorm[norm] = byNorm[norm] || []).push(w);
+  }
+
+  let added = 0;
+  for (const s of streams) {
+    const key = streamKey(s);
+    if (lineIndex.has(key)) continue;
+
+    const norm = normalizeName(s.stream);
+    const candidates = byNorm[norm] || [];
+
+    // Collect all ways within 0.3° of our known lat/lon
+    const nearby = candidates.filter(w => {
+      const mid = wayMid(w);
+      return mid && approxDistDeg(s.latitude, s.longitude, mid[0], mid[1]) < 0.3;
+    });
+
+    if (nearby.length) {
+      lineIndex.set(key, buildFeature(nearby, key, s.stream));
+      added++;
+      continue;
+    }
+
+    // Fallback: closest unnamed/any waterway within 0.008° (~800m)
+    let best = null, bestD = Infinity;
+    for (const w of elements) {
+      if (!w.geometry) continue;
+      const mid = wayMid(w);
+      if (!mid) continue;
+      const d = approxDistDeg(s.latitude, s.longitude, mid[0], mid[1]);
+      if (d < bestD) { bestD = d; best = w; }
+    }
+    if (best && bestD < 0.008) {
+      lineIndex.set(key, buildFeature([best], key, s.stream));
+      added++;
+    }
+  }
+  return added;
+}
+
+async function loadLineGeometry() {
+  // Try pre-fetched GeoJSON first — instant if fetch_geometries.py was run
+  try {
+    const r = await fetch('data/stream_lines.geojson');
+    if (r.ok) {
+      const gj = await r.json();
+      const feats = gj.features || [];
+      if (feats.length > 0) {
+        lineIndex = new Map();
+        feats.forEach(f => {
+          const k = f.properties && f.properties.key;
+          if (k) lineIndex.set(k, f);
+        });
+        console.log(`Loaded ${lineIndex.size} pre-fetched geometries`);
+        return;
+      }
+    }
+  } catch (_) {}
+
+  // ── Live Overpass: tile-based (9 queries, all waterways per tile) ───────
+  const notice = document.getElementById('streamsNotice');
+  lineIndex = new Map();
+
+  const named = allData.filter(s => s.latitude && s.longitude && s.stream && !isUNT(s.stream));
+
+  for (let t = 0; t < PA_TILES.length; t++) {
+    const tile = PA_TILES[t];
+    notice.style.display = '';
+    notice.textContent = `Loading stream lines from OSM… tile ${t + 1} / ${PA_TILES.length}`;
+
+    // Only bother querying tiles that have at least one of our streams
+    const streamsInTile = named.filter(s =>
+      s.latitude  >= tile[0] && s.latitude  <= tile[2] &&
+      s.longitude >= tile[1] && s.longitude <= tile[3]
+    );
+    if (!streamsInTile.length) {
+      console.log(`Tile ${t+1}: no streams, skipping`);
+      continue;
+    }
+
+    try {
+      const result = await fetchTile(tile);
+      const elements = result.elements || [];
+      const added = matchTileWays(elements, streamsInTile);
+      console.log(`Tile ${t+1}: ${elements.length} OSM ways → +${added} matched (${lineIndex.size} total)`);
+      applyFilters();
+    } catch (e) {
+      console.warn(`Tile ${t+1} failed:`, e);
+    }
+
+    if (t < PA_TILES.length - 1) await sleep(4000);
+  }
+
+  notice.style.display = 'none';
+  console.log(`Overpass complete: ${lineIndex.size} / ${named.length} streams matched`);
+}
+
+// ─── View mode toggle ─────────────────────────────────────────────────────────
+function setViewMode(mode) {
+  viewMode = mode;
+  document.getElementById('btnPoints').classList.toggle('active', mode === 'points');
+  document.getElementById('btnStreams').classList.toggle('active', mode === 'streams');
+
+  if (mode === 'streams' && lineIndex === null) {
+    loadLineGeometry().then(() => applyFilters());
+  } else {
+    applyFilters();
+  }
+}
+
+// ─── Filters ──────────────────────────────────────────────────────────────────
+function applyFilters() {
+  const q       = document.getElementById('search').value.toLowerCase().trim();
+  const county  = document.getElementById('filterCounty').value;
+  const species = document.getElementById('filterSpecies').value;
+  const minBrook = parseFloat(document.getElementById('minBrook').value) || 0;
+
+  const filtered = allData.filter(d => {
+    if (q && !`${d.county} ${d.stream} ${d.tributary_to || ''}`.toLowerCase().includes(q)) return false;
+    if (county && !(d.county || '').split('/').map(c => c.trim()).includes(county)) return false;
+    if (species) {
+      if (species === 'Mixed' && !d.dominant_species.startsWith('Mixed')) return false;
+      if (species !== 'Mixed' && !d.dominant_species.startsWith(species)) return false;
+    }
+    if (minBrook && (d.brook_trout_kg_ha || 0) < minBrook) return false;
+    return true;
+  });
+
+  render(filtered);
+}
+
+function clearFilters() {
+  ['search','filterCounty','filterSpecies','minBrook'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  applyFilters();
+}
+
+// ─── County dropdown ──────────────────────────────────────────────────────────
+function populateCountyDropdown() {
+  const counties = [...new Set(
+    allData.flatMap(d => (d.county || '').split('/').map(c => c.trim())).filter(Boolean)
+  )].sort();
+  const sel = document.getElementById('filterCounty');
+  counties.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c; opt.textContent = c;
+    sel.appendChild(opt);
+  });
+}
+
+// ─── Load ─────────────────────────────────────────────────────────────────────
+fetch('data/streams.json')
+  .then(r => r.json())
+  .then(data => {
+    allData = data;
+    populateCountyDropdown();
+    applyFilters();
+  })
+  .catch(err => {
+    document.getElementById('map').innerHTML =
+      `<div style="padding:60px;text-align:center;color:#fc8181">
+        Failed to load data: ${err.message}<br>
+        <small style="color:#718096">Serve over HTTP (e.g. python -m http.server)</small>
+      </div>`;
+  });
+</script>
+</body>
+</html>

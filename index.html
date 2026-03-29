@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PA Class A Wild Trout Streams</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0f1117;
+    color: #e2e8f0;
+    min-height: 100vh;
+  }
+
+  header {
+    background: #1a1f2e;
+    border-bottom: 1px solid #2d3748;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  header h1 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #63b3ed;
+    white-space: nowrap;
+  }
+  header .subtitle {
+    font-size: 0.8rem;
+    color: #718096;
+  }
+  .result-count {
+    margin-left: auto;
+    font-size: 0.85rem;
+    color: #a0aec0;
+    white-space: nowrap;
+  }
+
+  .controls {
+    background: #1a1f2e;
+    border-bottom: 1px solid #2d3748;
+    padding: 12px 24px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .controls input[type="text"],
+  .controls select {
+    background: #2d3748;
+    border: 1px solid #4a5568;
+    color: #e2e8f0;
+    border-radius: 6px;
+    padding: 7px 11px;
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .controls input[type="text"]:focus,
+  .controls select:focus {
+    border-color: #63b3ed;
+  }
+  .controls input[type="text"] { width: 200px; }
+
+  .range-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: #a0aec0;
+  }
+  .range-group input[type="number"] {
+    background: #2d3748;
+    border: 1px solid #4a5568;
+    color: #e2e8f0;
+    border-radius: 6px;
+    padding: 7px 8px;
+    font-size: 0.85rem;
+    width: 70px;
+    outline: none;
+  }
+  .range-group input[type="number"]:focus { border-color: #63b3ed; }
+
+  .btn-clear {
+    background: #2d3748;
+    border: 1px solid #4a5568;
+    color: #a0aec0;
+    border-radius: 6px;
+    padding: 7px 14px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-clear:hover { background: #4a5568; color: #e2e8f0; }
+
+  .table-wrap {
+    overflow-x: auto;
+    padding: 0 0 24px 0;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    min-width: 960px;
+  }
+
+  thead th {
+    background: #1a1f2e;
+    color: #a0aec0;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 10px 12px;
+    text-align: left;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    border-bottom: 2px solid #2d3748;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.15s;
+  }
+  thead th:hover { color: #63b3ed; }
+  thead th.sort-asc::after  { content: ' ▲'; font-size: 0.65rem; color: #63b3ed; }
+  thead th.sort-desc::after { content: ' ▼'; font-size: 0.65rem; color: #63b3ed; }
+  thead th.sorted { color: #63b3ed; }
+
+  tbody tr {
+    border-bottom: 1px solid #1e2533;
+    transition: background 0.1s;
+  }
+  tbody tr:hover { background: #1e2533; }
+
+  td {
+    padding: 8px 12px;
+    vertical-align: middle;
+    color: #cbd5e0;
+  }
+
+  td.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    color: #e2e8f0;
+  }
+
+  .species-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .sp-brook  { background: #1a4a2e; color: #68d391; }
+  .sp-brown  { background: #3d2e0a; color: #f6ad55; }
+  .sp-rainbow{ background: #1a2e4a; color: #76e4f7; }
+  .sp-mixed  { background: #2d1b4e; color: #b794f4; }
+  .sp-unknown{ background: #2d3748; color: #718096; }
+
+  .bio-bar {
+    display: inline-block;
+    height: 6px;
+    border-radius: 3px;
+    vertical-align: middle;
+    margin-right: 6px;
+    min-width: 1px;
+    background: #63b3ed;
+  }
+
+  .map-link {
+    color: #63b3ed;
+    text-decoration: none;
+    font-size: 0.75rem;
+  }
+  .map-link:hover { text-decoration: underline; }
+
+  .stream-name {
+    font-weight: 500;
+    color: #e2e8f0;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  td .stream-name:hover { white-space: normal; overflow: visible; }
+
+  .no-results {
+    text-align: center;
+    padding: 60px 24px;
+    color: #4a5568;
+    font-size: 0.9rem;
+  }
+
+  /* Tooltip for full stream name */
+  td[title] { cursor: default; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🎣 PA Class A Wild Trout Streams</h1>
+    <div class="subtitle">Proposed additions · Pennsylvania Fish &amp; Boat Commission bulletins 2010–2025</div>
+  </div>
+  <div class="result-count" id="resultCount"></div>
+  <a style="background:#2d3748;border:1px solid #4a5568;color:#a0aec0;border-radius:6px;padding:6px 12px;font-size:0.8rem;text-decoration:none;white-space:nowrap;transition:all 0.15s" href="map.html">🗺 Map view</a>
+</header>
+
+<div class="controls">
+  <input type="text" id="search" placeholder="Search stream or county…" oninput="applyFilters()">
+
+  <select id="filterCounty" onchange="applyFilters()">
+    <option value="">All counties</option>
+  </select>
+
+  <select id="filterSpecies" onchange="applyFilters()">
+    <option value="">All species</option>
+    <option value="Brook">Brook trout</option>
+    <option value="Brown">Brown trout</option>
+    <option value="Rainbow">Rainbow trout</option>
+    <option value="Mixed">Mixed</option>
+  </select>
+
+  <div class="range-group">
+    Total biomass ≥
+    <input type="number" id="minBio" placeholder="0" min="0" oninput="applyFilters()">
+    kg/ha
+  </div>
+
+  <div class="range-group">
+    Survey year ≥
+    <input type="number" id="minYear" placeholder="2000" min="2000" max="2030" oninput="applyFilters()">
+  </div>
+
+  <button class="btn-clear" onclick="clearFilters()">Clear filters</button>
+</div>
+
+<div class="table-wrap">
+  <table id="mainTable">
+    <thead>
+      <tr>
+        <th data-col="county">County</th>
+        <th data-col="stream">Stream</th>
+        <th data-col="section">Sec</th>
+        <th data-col="dominant_species">Species</th>
+        <th data-col="brook_trout_kg_ha" class="num">Brook<br><span style="font-weight:400;font-size:0.7rem">(kg/ha)</span></th>
+        <th data-col="brown_trout_kg_ha" class="num">Brown<br><span style="font-weight:400;font-size:0.7rem">(kg/ha)</span></th>
+        <th data-col="rainbow_trout_kg_ha" class="num">Rainbow<br><span style="font-weight:400;font-size:0.7rem">(kg/ha)</span></th>
+        <th data-col="total_biomass_kg_ha" class="num">Total<br><span style="font-weight:400;font-size:0.7rem">(kg/ha)</span></th>
+        <th data-col="length_miles" class="num">Length<br><span style="font-weight:400;font-size:0.7rem">(mi)</span></th>
+        <th data-col="survey_year" class="num">Survey<br>Year</th>
+        <th data-col="bulletin_year" class="num">Bulletin</th>
+        <th>Location</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+  <div class="no-results" id="noResults" style="display:none">No streams match the current filters.</div>
+</div>
+
+<script>
+let allData = [];
+let filtered = [];
+let sortCol = 'total_biomass_kg_ha';
+let sortDir = -1; // -1 = desc
+
+function fmt(v, decimals=2) {
+  if (v === null || v === undefined) return '<span style="color:#4a5568">—</span>';
+  return (+v).toFixed(decimals);
+}
+
+function speciesBadge(d) {
+  const s = d.dominant_species || '';
+  let cls, label;
+  if (s.startsWith('Brook') && !s.includes('+')) { cls='sp-brook'; label='Brook'; }
+  else if (s.startsWith('Brown') && !s.includes('+')) { cls='sp-brown'; label='Brown'; }
+  else if (s.startsWith('Rainbow') && !s.includes('+')) { cls='sp-rainbow'; label='Rainbow'; }
+  else if (s.startsWith('Mixed')) { cls='sp-mixed'; label=s.replace('Mixed (','').replace(')',''); }
+  else { cls='sp-unknown'; label='Unknown'; }
+  return `<span class="species-badge ${cls}">${label}</span>`;
+}
+
+function bioBar(v, maxVal) {
+  if (v === null || v === undefined) return '';
+  const pct = Math.min(100, (v / maxVal) * 100);
+  let color = '#63b3ed';
+  if (v > 100) color = '#68d391';
+  else if (v > 50) color = '#76e4f7';
+  return `<span class="bio-bar" style="width:${pct}px;background:${color}"></span>`;
+}
+
+function buildRow(d, maxBio) {
+  const loc = (d.latitude && d.longitude)
+    ? `<a class="map-link" href="https://www.google.com/maps?q=${d.latitude},${d.longitude}" target="_blank" rel="noopener">📍 Map</a>`
+    : '';
+  const streamTitle = [d.stream, d.section ? `(Sec ${d.section})` : '', d.limits || ''].filter(Boolean).join(' – ');
+  return `<tr>
+    <td>${d.county || ''}</td>
+    <td><div class="stream-name" title="${streamTitle.replace(/"/g,'&quot;')}">${d.stream || ''}</div>${d.section ? `<div style="font-size:0.72rem;color:#718096">Sec ${d.section}</div>` : ''}</td>
+    <td style="color:#718096;font-size:0.8rem">${d.section || ''}</td>
+    <td>${speciesBadge(d)}</td>
+    <td class="num">${bioBar(d.brook_trout_kg_ha, maxBio)}${fmt(d.brook_trout_kg_ha)}</td>
+    <td class="num">${bioBar(d.brown_trout_kg_ha, maxBio)}${fmt(d.brown_trout_kg_ha)}</td>
+    <td class="num">${bioBar(d.rainbow_trout_kg_ha, maxBio)}${fmt(d.rainbow_trout_kg_ha)}</td>
+    <td class="num"><strong>${fmt(d.total_biomass_kg_ha)}</strong></td>
+    <td class="num">${fmt(d.length_miles, 2)}</td>
+    <td class="num">${d.survey_year || '—'}</td>
+    <td class="num">${d.bulletin_year || '—'}</td>
+    <td>${loc}</td>
+  </tr>`;
+}
+
+function renderTable() {
+  const maxBio = Math.max(...filtered.map(d => d.total_biomass_kg_ha || 0), 1);
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = filtered.map(d => buildRow(d, maxBio)).join('');
+  document.getElementById('noResults').style.display = filtered.length ? 'none' : 'block';
+  document.getElementById('resultCount').textContent =
+    `${filtered.length.toLocaleString()} of ${allData.length.toLocaleString()} streams`;
+}
+
+function applyFilters() {
+  const q = document.getElementById('search').value.toLowerCase().trim();
+  const county = document.getElementById('filterCounty').value;
+  const species = document.getElementById('filterSpecies').value;
+  const minBio = parseFloat(document.getElementById('minBio').value) || 0;
+  const minYear = parseInt(document.getElementById('minYear').value) || 0;
+
+  filtered = allData.filter(d => {
+    if (q && !`${d.county} ${d.stream} ${d.tributary_to || ''}`.toLowerCase().includes(q)) return false;
+    if (county && !(d.county || '').split('/').map(c => c.trim()).includes(county)) return false;
+    if (species) {
+      if (species === 'Mixed' && !d.dominant_species.startsWith('Mixed')) return false;
+      if (species !== 'Mixed' && !d.dominant_species.startsWith(species)) return false;
+    }
+    if (minBio && (d.total_biomass_kg_ha || 0) < minBio) return false;
+    if (minYear && (d.survey_year || 0) < minYear) return false;
+    return true;
+  });
+
+  doSort();
+}
+
+function doSort() {
+  const col = sortCol;
+  filtered.sort((a, b) => {
+    let av = a[col], bv = b[col];
+    if (av === null || av === undefined) av = sortDir === 1 ? Infinity : -Infinity;
+    if (bv === null || bv === undefined) bv = sortDir === 1 ? Infinity : -Infinity;
+    if (typeof av === 'string') return sortDir * av.localeCompare(bv);
+    return sortDir * (av - bv);
+  });
+  renderTable();
+  updateSortHeaders();
+}
+
+function updateSortHeaders() {
+  document.querySelectorAll('thead th').forEach(th => {
+    th.classList.remove('sort-asc', 'sort-desc', 'sorted');
+    if (th.dataset.col === sortCol) {
+      th.classList.add('sorted', sortDir === 1 ? 'sort-asc' : 'sort-desc');
+    }
+  });
+}
+
+function clearFilters() {
+  document.getElementById('search').value = '';
+  document.getElementById('filterCounty').value = '';
+  document.getElementById('filterSpecies').value = '';
+  document.getElementById('minBio').value = '';
+  document.getElementById('minYear').value = '';
+  applyFilters();
+}
+
+function populateCountyDropdown() {
+  const counties = [...new Set(
+    allData.flatMap(d => (d.county || '').split('/').map(c => c.trim())).filter(Boolean)
+  )].sort();
+  const sel = document.getElementById('filterCounty');
+  counties.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c;
+    opt.textContent = c;
+    sel.appendChild(opt);
+  });
+}
+
+// Sort on header click
+document.querySelectorAll('thead th[data-col]').forEach(th => {
+  th.addEventListener('click', () => {
+    const col = th.dataset.col;
+    if (sortCol === col) {
+      sortDir *= -1;
+    } else {
+      sortCol = col;
+      sortDir = ['county','stream','dominant_species'].includes(col) ? 1 : -1;
+    }
+    doSort();
+  });
+});
+
+// Load data
+fetch('data/streams.json')
+  .then(r => r.json())
+  .then(data => {
+    allData = data;
+    filtered = [...allData];
+    populateCountyDropdown();
+    doSort(); // initial sort by total_biomass desc
+  })
+  .catch(err => {
+    document.getElementById('tableBody').innerHTML =
+      `<tr><td colspan="12" style="text-align:center;color:#fc8181;padding:40px">
+        Failed to load data: ${err.message}<br>
+        <small style="color:#718096">Make sure you're serving this file over HTTP (e.g. python -m http.server)</small>
+      </td></tr>`;
+  });
+</script>
+</body>
+</html>
